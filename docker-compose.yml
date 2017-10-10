@@ -1,0 +1,66 @@
+version: '2'
+
+volumes:
+   pgdb:
+   redis:
+   sentry:
+
+services:
+  redis:
+    image: redis
+    volumes:
+      - /data
+    restart: unless-stopped
+
+  postgres:
+    image: postgres
+    volumes:
+      - pgdb:/var/lib/postgresql/data
+    env_file: ./env
+    restart: unless-stopped
+
+  sentry:
+    build: .
+    links:
+      - redis
+      - postgres
+    ports:
+      - 9000:9000
+    volumes:
+      - sentry:/var/lib/sentry/files
+    env_file: ./env
+    restart: unless-stopped
+
+  cron:
+    build: .
+    links:
+      - redis
+      - postgres
+    command: "sentry run cron"
+    volumes:
+      - sentry:/var/lib/sentry/files
+    env_file: ./env
+    restart: unless-stopped
+
+  worker:
+    build: .
+    links:
+      - redis
+      - postgres
+    command: "sentry run worker"
+    volumes:
+      - sentry:/var/lib/sentry/files
+    env_file: ./env
+    restart: unless-stopped
+
+  upgrade:
+    build: .
+    links:
+      - redis
+      - postgres
+    command: "sentry upgrade"
+    volumes:
+      - sentry:/var/lib/sentry/files
+    env_file: ./env
+    restart: unless-stopped
+
